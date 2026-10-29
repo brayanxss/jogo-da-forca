@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d1c">
+  <meta name="description" content="Descubra a palavra. Supere seus amigos. Jogue forca solo ou em tempo real.">
+  <title>FORCA — Descubra a palavra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="/client.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-blue" aria-hidden="true"></div>
+  <div class="ambient ambient-violet" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="FORCA, página inicial">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none"><path d="M7 25h19M11 25V6h12M23 6v5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="23" cy="15" r="2.1" fill="currentColor"/></svg>
+      </span>
+      <span class="brand-word">FORCA<span class="brand-period">.</span></span>
+      <span class="brand-divider" aria-hidden="true"></span>
+      <span class="brand-caption">JOGO DE PALAVRAS</span>
+    </a>
+    <div class="header-actions">
+      <span id="connection-status" class="connection"><i></i> Conectando</span>
+      <details class="settings-menu">
+        <summary class="icon-button settings-trigger" aria-label="Abrir configurações" title="Configurações">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M8.2 2.7h3.6l.5 2a5.8 5.8 0 0 1 1.2.7l1.9-.6 1.8 3.1-1.4 1.5a6 6 0 0 1 0 1.4l1.4 1.5-1.8 3.1-1.9-.6a5.8 5.8 0 0 1-1.2.7l-.5 2H8.2l-.5-2a5.8 5.8 0 0 1-1.2-.7l-1.9.6-1.8-3.1 1.4-1.5a6 6 0 0 1 0-1.4L2.8 8l1.8-3.1 1.9.6a5.8 5.8 0 0 1 1.2-.7l.5-2Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.25"/></svg>
+        </summary>
+        <div class="settings-popover">
+          <span class="settings-title">PREFERÊNCIAS</span>
+          <button id="theme-toggle" class="settings-action" aria-label="Alternar tema"><span class="settings-action-icon" aria-hidden="true">◐</span><span>Tema claro ou escuro</span></button>
+          <button id="sound-toggle" class="settings-action" aria-label="Ativar ou desativar sons"><span class="settings-action-icon" aria-hidden="true">♫</span><span>Sons do jogo</span></button>
+        </div>
+      </details>
+      <button id="profile-button" class="profile-button" aria-label="Editar perfil">
+        <span id="avatar-letter" class="profile-avatar">J</span>
+        <span id="profile-name">Jogador</span>
+        <span class="profile-caret" aria-hidden="true">⌄</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section id="home-screen" class="screen home-screen">
+      <div class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="eyebrow-line"></span> A palavra está com você</div>
+          <h1>Descubra a palavra.<br><span class="gradient-text">Supere seus amigos.</span></h1>
+          <p>Uma letra de cada vez. Jogue no seu ritmo ou desafie a galera em uma partida ao vivo.</p>
+
+          <label class="home-name-field" for="home-player-name">
+            <span>SEU APELIDO</span>
+            <span class="name-input-wrap">
+              <span class="name-input-icon" aria-hidden="true">＠</span>
+              <input id="home-player-name" maxlength="20" placeholder="Como podemos te chamar?" autocomplete="nickname">
+              <span class="name-input-hint" aria-hidden="true">até 20 caracteres</span>
+            </span>
+          </label>
+
+          <div class="hero-actions">
+            <button id="solo-button" class="button button-primary hero-primary">
+              <span>Jogar agora</span>
+              <span class="button-arrow" aria-hidden="true">↗</span>
+            </button>
+            <button id="multiplayer-button" class="button button-secondary hero-secondary">
+              <span class="multiplayer-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1.8 16c.4-2.7 2.2-4 5.2-4s4.8 1.3 5.2 4M14 4.2a3 3 0 0 1 0 5.7m2.3 2.3c1.2.7 1.8 2 2 3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </span>
+              Multiplayer
+            </button>
+          </div>
+          <div class="hero-footnote"><span class="live-dot"></span> Salas ao vivo · até 8 jogadores</div>
+        </div>
+
+        <div class="hero-art" role="img" aria-label="Ilustração da forca com uma palavra de seis letras para descobrir">
+          <div class="art-grid" aria-hidden="true"></div>
+          <div class="art-ring ring-one" aria-hidden="true"></div>
+          <div class="art-ring ring-two" aria-hidden="true"></div>
+          <div class="art-card">
+            <div class="art-card-top"><span class="art-status"><i></i> SUA PRÓXIMA PARTIDA</span><span class="art-round">01 / 06</span></div>
+            <svg class="hero-hangman" viewBox="0 0 240 190" aria-hidden="true">
+              <path class="hero-gallows" d="M38 164h165M70 164V23h92M162 23v28"/>
+              <circle class="hero-person" cx="162" cy="68" r="17"/>
+              <path class="hero-person" d="M162 85v40m0-27-21 17m21-17 20 16m-20 11-18 29m18-29 18 29"/>
+              <path class="hero-spark" d="m193 91 4 8 8 2-8 3-4 8-3-8-8-3 8-2 3-8Z"/>
+            </svg>
+            <div class="art-word" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="art-card-bottom"><span>Uma palavra, mil possibilidades.</span><span class="art-live"><i></i> AO VIVO</span></div>
+          </div>
+          <div class="art-floating floating-top" aria-hidden="true">A</div>
+          <div class="art-floating floating-side" aria-hidden="true">?</div>
+          <span class="art-coordinate coordinate-one" aria-hidden="true">— 01</span>
+          <span class="art-coordinate coordinate-two" aria-hidden="true">F / 26</span>
+        </div>
+      </div>
+
+      <section id="multiplayer-panel" class="quick-play" aria-labelledby="multiplayer-heading" hidden>
+        <div class="quick-heading">
+          <div><span class="eyebrow">JOGUE COM A GALERA</span><h2 id="multiplayer-heading">Como quer jogar?</h2></div>
+          <button id="close-multiplayer" class="icon-button close-multiplayer" aria-label="Fechar opções multiplayer">×</button>
+        </div>
+        <div class="quick-options">
+          <button id="create-room-button" class="quick-option">
+            <span class="option-icon violet" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
+            <span class="option-copy"><b>Criar sala</b><small>Escolha as regras e convide seus amigos.</small></span><span class="option-arrow" aria-hidden="true">↗</span>
+          </button>
+          <button id="join-room-button" class="quick-option">
+            <span class="option-icon blue" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M8 12.5 12.5 8M6.3 13.7l-1.1 1.1a3 3 0 0 1-4.2-4.2l4-4a3 3 0 0 1 4.2 0m4.5-1.3 1.1-1.1a3 3 0 0 1 4.2 4.2l-4 4a3 3 0 0 1-4.2 0" transform="translate(1 1)" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+            <span class="option-copy"><b>Entrar com código</b><small>Já tem um convite? A partida começa aqui.</small></span><span class="option-arrow" aria-hidden="true">↗</span>
+          </button>
+          <button id="public-rooms-button" class="quick-option">
+            <span class="option-icon cyan" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M3 10h14M10 3a11 11 0 0 1 0 14m0-14a11 11 0 0 0 0 14" stroke="currentColor" stroke-width="1.3"/></svg></span>
+            <span class="option-copy"><b>Salas públicas</b><small>Encontre uma partida aberta para entrar.</small></span><span class="option-arrow" aria-hidden="true">↗</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="feature-row" aria-label="Recursos do jogo">
+        <article class="feature"><span class="feature-icon" aria-hidden="true">01</span><span><b>1.000 palavras</b><small>10 categorias para descobrir</small></span></article>
+        <article class="feature"><span class="feature-icon" aria-hidden="true">02</span><span><b>Partidas em tempo real</b><small>Convide de 2 a 8 jogadores</small></span></article>
+        <article class="feature"><span class="feature-icon" aria-hidden="true">03</span><span><b>Solo ou multiplayer</b><small>Você escolhe o desafio</small></span></article>
+      </section>
+
+      <section class="below-fold" aria-labelledby="stats-heading">
+        <div class="section-title">
+          <div><span class="eyebrow">PLACAR DA COMUNIDADE</span><h2 id="stats-heading">Cada partida deixa sua marca.</h2></div>
+          <button id="ranking-button" class="text-button">Ver ranking <span aria-hidden="true">↗</span></button>
+        </div>
+        <div id="stats-cards" class="stats-grid">
+          <article class="stat-card"><span>Partidas disputadas</span><b id="stat-games">—</b><small>na comunidade</small></article>
+          <article class="stat-card"><span>Palavras descobertas</span><b id="stat-words">—</b><small>e contando</small></article>
+          <article class="stat-card"><span>Tempo médio</span><b id="stat-time">—</b><small>para acertar a palavra</small></article>
+        </div>
+      </section>
+      <footer class="footer"><span>FORCA<span class="brand-period">.</span> <span class="footer-muted">JOGO DE PALAVRAS</span></span><span>Uma letra de cada vez.</span></footer>
+    </section>
+
+    <section id="game-screen" class="screen game-screen" hidden>
+      <div class="game-topline">
+        <button id="back-home" class="back-button"><span aria-hidden="true">←</span> Início</button>
+        <div class="game-heading"><span class="eyebrow" id="game-mode-label">MODO SOLO</span><h1 id="game-title">Hora de adivinhar</h1></div>
+        <div class="room-code-box" id="room-code-box" hidden><span>CÓDIGO DA SALA</span><button id="copy-code" aria-label="Copiar código da sala"><b id="room-code-label">------</b><span aria-hidden="true">▣</span></button></div>
+      </div>
+
+      <div id="lobby-panel" class="lobby-panel" hidden>
+        <div class="lobby-title">
+          <div><span class="eyebrow">CONFIGURAÇÃO DA PARTIDA</span><h2>Sua sala, suas regras.</h2></div>
+          <span class="lobby-status"><i></i> Aguardando jogadores</span>
+        </div>
+        <div class="lobby-content">
+          <div class="lobby-settings">
+            <label>Categoria<select id="setting-category"></select></label>
+            <label>Dificuldade<select id="setting-difficulty"><option value="">Aleatória</option><option value="facil">Fácil</option><option value="medio">Média</option><option value="dificil">Difícil</option></select></label>
+            <label>Formato<select id="setting-format"><option value="all">Todos contra a palavra</option><option value="turns">Competição por turnos</option></select></label>
+            <label>Jogadores<select id="setting-players"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option selected>8</option></select></label>
+            <label>Rodadas<input id="setting-rounds" type="number" min="1" max="50" value="10"></label>
+            <label>Tempo por rodada<select id="setting-time"><option value="0">Sem limite</option><option value="30">30 segundos</option><option value="60">1 minuto</option><option value="90">1 min 30 s</option><option value="120">2 minutos</option></select></label>
+            <label>Pontos por palavra<input id="setting-points" type="number" min="0" max="10000" value="100"></label>
+            <label>Bônus sem erros<input id="setting-perfect" type="number" min="0" max="10000" value="20"></label>
+            <label>Pontos por velocidade<input id="setting-speed-points" type="number" min="0" max="1000" value="10"></label>
+            <label>Limite do bônus (segundos)<input id="setting-speed-threshold" type="number" min="5" max="600" value="30"></label>
+            <label>Desconto por erro<input id="setting-penalty" type="number" min="0" max="10000" value="0"></label>
+            <label class="check-setting"><input id="setting-public" type="checkbox"> Sala pública</label>
+            <label class="check-setting"><input id="setting-hints" type="checkbox" checked> Permitir uma dica por rodada</label>
+            <label class="check-setting"><input id="setting-speed" type="checkbox" checked> Bônus por velocidade</label>
+            <label class="check-setting"><input id="setting-accents" type="checkbox" checked> Ignorar acentos</label>
+          </div>
+          <div class="lobby-players">
+            <div class="players-heading"><b>Jogadores na sala</b><span id="lobby-player-count">0/8</span></div>
+            <div id="lobby-player-list"></div>
+            <div class="lobby-actions"><p id="lobby-help">Compartilhe o código da sala com seus amigos.</p><button id="start-game-button" class="button button-primary" disabled>Iniciar partida <span aria-hidden="true">↗</span></button></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="play-area" class="play-layout" hidden>
+        <section class="play-card" aria-label="Partida de forca">
+          <div class="round-info"><span id="round-category" class="category-pill">CATEGORIA</span><span id="round-counter">RODADA 1 / 10</span><span id="round-timer" class="timer" hidden>00:00</span></div>
+          <div id="feedback-banner" class="feedback-banner" role="status" aria-live="polite" hidden></div>
+          <div class="hangman-stage">
+            <div class="hangman-drawing-wrap">
+              <div id="hangman" class="hangman-drawing" data-errors="0">
+                <svg viewBox="0 0 220 200" role="img" aria-label="Desenho da forca que avança a cada erro">
+                  <path class="gallows-line" d="M22 182h172M52 182V22h104M156 22v31"/>
+                  <circle class="hang-part part-1" cx="156" cy="70" r="17"/>
+                  <path class="hang-part part-2" d="M156 87v42"/>
+                  <path class="hang-part part-3" d="m156 99-23 19"/>
+                  <path class="hang-part part-4" d="m156 99 23 19"/>
+                  <path class="hang-part part-5" d="m156 129-19 31"/>
+                  <path class="hang-part part-6" d="m156 129 19 31"/>
+                </svg>
+              </div>
+              <span id="tries-label" class="tries-badge">6 tentativas restantes</span>
+            </div>
+            <div class="word-area">
+              <span class="word-overline">PALAVRA SECRETA</span>
+              <div id="masked-word" class="masked-word" aria-live="polite"></div>
+              <p id="word-caption">Descubra a palavra antes que as tentativas acabem.</p>
+            </div>
+          </div>
+          <div class="guess-area"><div class="guess-heading"><b>Escolha uma letra</b><span>Você também pode usar o teclado</span></div><div id="keyboard" class="keyboard" role="group" aria-label="Teclado de letras"></div></div>
+          <div class="play-footer"><button id="hint-button" class="hint-button">◇ <span>Usar uma dica</span></button><span class="accent-note">Acentos não fazem diferença</span><button id="pause-game-button" class="button button-secondary" hidden>Pausar</button><button id="next-round-button" class="button button-primary" hidden>Próxima rodada <span aria-hidden="true">↗</span></button><button id="play-again-button" class="button button-primary" hidden>Jogar novamente <span aria-hidden="true">↗</span></button></div>
+        </section>
+        <aside class="score-card" aria-label="Placar da partida">
+          <div class="score-heading"><div><span class="eyebrow">PLACAR AO VIVO</span><span class="score-heading-title">Jogadores</span></div><span id="online-count" class="online-count"><i></i> 1 online</span></div>
+          <div id="score-list" class="score-list"></div>
+          <div class="score-footnote"><span aria-hidden="true">✦</span><span id="score-rule">100 pontos por palavra descoberta<br><small>Bônus de 20 pontos sem erros</small></span></div>
+          <button id="end-game-button" class="text-button end-game-button" hidden>Encerrar partida</button>
+        </aside>
+      </div>
+      <div id="game-finished" class="finished-card" hidden><span class="finished-icon" aria-hidden="true">✦</span><span class="eyebrow">FIM DE JOGO</span><h2>Mandaram muito bem!</h2><p id="finished-copy">A partida chegou ao fim.</p><button id="return-home-button" class="button button-primary">Voltar ao início</button></div>
+    </section>
+  </main>
+
+  <dialog id="setup-dialog" class="modal">
+    <form method="dialog" class="modal-form">
+      <button type="button" class="modal-close" aria-label="Fechar">×</button>
+      <span id="dialog-eyebrow" class="eyebrow">VAMOS JOGAR</span>
+      <h2 id="dialog-title">Qual é o seu nome?</h2>
+      <p id="dialog-description">Escolha como quer aparecer para os outros jogadores.</p>
+      <label id="name-field" class="field-label">Seu apelido<input id="player-name" maxlength="20" placeholder="Ex.: Rafa" autocomplete="nickname" required></label>
+      <label id="code-field" class="field-label" hidden>Código da sala<input id="room-code-input" maxlength="6" placeholder="ABC123" autocomplete="off"></label>
+      <label id="solo-category-field" class="field-label" hidden>Categoria<select id="solo-category"></select></label>
+      <label id="solo-difficulty-field" class="field-label" hidden>Dificuldade<select id="solo-difficulty"><option value="">Aleatória</option><option value="facil">Fácil</option><option value="medio">Média</option><option value="dificil">Difícil</option></select></label>
+      <div id="create-settings" class="create-settings" hidden>
+        <label>Categoria<select id="create-category"></select></label>
+        <label>Formato<select id="create-format"><option value="all">Todos contra a palavra</option><option value="turns">Competição por turnos</option></select></label>
+        <label>Jogadores<select id="create-max"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option selected>8</option></select></label>
+        <label class="check-setting"><input id="create-public" type="checkbox"> Sala pública</label>
+      </div>
+      <button id="dialog-submit" class="button button-primary modal-submit" value="submit">Continuar <span aria-hidden="true">↗</span></button>
+    </form>
+  </dialog>
+
+  <dialog id="ranking-dialog" class="modal ranking-modal">
+    <form method="dialog" class="modal-form">
+      <button type="button" class="modal-close" aria-label="Fechar">×</button>
+      <span class="eyebrow">A COMUNIDADE</span><h2>Ranking geral</h2>
+      <p>Os melhores jogadores da FORCA.</p>
+      <div id="ranking-list" class="ranking-list"></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
