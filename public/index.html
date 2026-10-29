@@ -156,24 +156,25 @@
           <div class="lobby-settings">
             <label>Categoria<select id="setting-category"></select></label>
             <label>Dificuldade<select id="setting-difficulty"><option value="">Aleatória</option><option value="facil">Fácil</option><option value="medio">Média</option><option value="dificil">Difícil</option></select></label>
-            <label>Formato<select id="setting-format"><option value="all">Todos contra a palavra</option><option value="turns">Competição por turnos</option></select></label>
+            <label>Formato<select id="setting-format"><option value="all">Todos jogam ao mesmo tempo</option></select></label>
             <label>Jogadores<select id="setting-players"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option selected>8</option></select></label>
-            <label>Rodadas<input id="setting-rounds" type="number" min="1" max="50" value="10"></label>
-            <label>Tempo por rodada<select id="setting-time"><option value="0">Sem limite</option><option value="30">30 segundos</option><option value="60">1 minuto</option><option value="90">1 min 30 s</option><option value="120">2 minutos</option></select></label>
+            <label>Rodadas<input id="setting-rounds" type="number" min="1" max="50" value="5"></label>
+            <label>Tempo por rodada<select id="setting-time"><option value="0">Sem limite</option><option value="30">30 segundos</option><option value="60" selected>1 minuto</option><option value="90">1 min 30 s</option><option value="120">2 minutos</option></select></label>
             <label>Pontos por palavra<input id="setting-points" type="number" min="0" max="10000" value="100"></label>
-            <label>Bônus sem erros<input id="setting-perfect" type="number" min="0" max="10000" value="20"></label>
-            <label>Pontos por velocidade<input id="setting-speed-points" type="number" min="0" max="1000" value="10"></label>
-            <label>Limite do bônus (segundos)<input id="setting-speed-threshold" type="number" min="5" max="600" value="30"></label>
-            <label>Desconto por erro<input id="setting-penalty" type="number" min="0" max="10000" value="0"></label>
+            <label>Bônus sem erros<input id="setting-perfect" type="number" min="0" max="10000" value="30"></label>
+            <label>Pontos por velocidade<input id="setting-speed-points" type="number" min="0" max="1000" value="20"></label>
+            <label>Limite do bônus (segundos)<input id="setting-speed-threshold" type="number" min="1" max="600" value="15"></label>
+            <label>Bônus por sequência de 3<input id="setting-streak" type="number" min="0" max="10000" value="25"></label>
             <label class="check-setting"><input id="setting-public" type="checkbox"> Sala pública</label>
             <label class="check-setting"><input id="setting-hints" type="checkbox" checked> Permitir uma dica por rodada</label>
             <label class="check-setting"><input id="setting-speed" type="checkbox" checked> Bônus por velocidade</label>
             <label class="check-setting"><input id="setting-accents" type="checkbox" checked> Ignorar acentos</label>
+            <label class="check-setting"><input id="setting-late-join" type="checkbox"> Permitir entrada após começar</label>
           </div>
           <div class="lobby-players">
             <div class="players-heading"><b>Jogadores na sala</b><span id="lobby-player-count">0/8</span></div>
             <div id="lobby-player-list"></div>
-            <div class="lobby-actions"><p id="lobby-help">Compartilhe o código da sala com seus amigos.</p><button id="start-game-button" class="button button-primary" disabled>Iniciar partida <span aria-hidden="true">↗</span></button></div>
+            <div class="lobby-actions"><p id="lobby-help">Compartilhe o código da sala com seus amigos.</p><button id="ready-game-button" class="button button-secondary" type="button">Marcar como pronto</button><button id="start-game-button" class="button button-primary" disabled>Iniciar partida <span aria-hidden="true">↗</span></button></div>
           </div>
         </div>
       </div>
@@ -211,9 +212,25 @@
           <div id="score-list" class="score-list"></div>
           <div class="score-footnote"><span aria-hidden="true">✦</span><span id="score-rule">100 pontos por palavra descoberta<br><small>Bônus de 20 pontos sem erros</small></span></div>
           <button id="end-game-button" class="text-button end-game-button" hidden>Encerrar partida</button>
+          <section class="room-social" aria-label="Chat da sala">
+            <div class="social-heading"><b>Conversa da sala</b><span>Mensagens visíveis para todos</span></div>
+            <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-relevant="additions"></div>
+            <div class="quick-reactions" aria-label="Reações rápidas">
+              <button type="button" data-reaction="👏" aria-label="Aplausos">👏</button>
+              <button type="button" data-reaction="🔥" aria-label="Fogo">🔥</button>
+              <button type="button" data-reaction="💡" aria-label="Ideia">💡</button>
+              <button type="button" data-reaction="😮" aria-label="Surpresa">😮</button>
+              <button type="button" data-reaction="💪" aria-label="Força">💪</button>
+            </div>
+            <form id="chat-form" class="chat-form">
+              <label class="sr-only" for="chat-input">Mensagem para a sala</label>
+              <input id="chat-input" maxlength="200" autocomplete="off" placeholder="Escreva uma mensagem…">
+              <button type="submit" aria-label="Enviar mensagem">Enviar</button>
+            </form>
+          </section>
         </aside>
       </div>
-      <div id="game-finished" class="finished-card" hidden><span class="finished-icon" aria-hidden="true">✦</span><span class="eyebrow">FIM DE JOGO</span><h2>Mandaram muito bem!</h2><p id="finished-copy">A partida chegou ao fim.</p><button id="return-home-button" class="button button-primary">Voltar ao início</button></div>
+      <div id="game-finished" class="finished-card" hidden><span class="finished-icon" aria-hidden="true">✦</span><span class="eyebrow">FIM DE JOGO</span><h2>Mandaram muito bem!</h2><p id="finished-copy">A partida chegou ao fim.</p><div id="finished-standings" class="finished-standings" aria-label="Classificação final"></div><button id="return-home-button" class="button button-primary">Voltar ao início</button></div>
     </section>
   </main>
 
@@ -229,7 +246,7 @@
       <label id="solo-difficulty-field" class="field-label" hidden>Dificuldade<select id="solo-difficulty"><option value="">Aleatória</option><option value="facil">Fácil</option><option value="medio">Média</option><option value="dificil">Difícil</option></select></label>
       <div id="create-settings" class="create-settings" hidden>
         <label>Categoria<select id="create-category"></select></label>
-        <label>Formato<select id="create-format"><option value="all">Todos contra a palavra</option><option value="turns">Competição por turnos</option></select></label>
+        <label>Formato<select id="create-format"><option value="all">Todos jogam ao mesmo tempo</option></select></label>
         <label>Jogadores<select id="create-max"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option selected>8</option></select></label>
         <label class="check-setting"><input id="create-public" type="checkbox"> Sala pública</label>
       </div>
@@ -242,6 +259,10 @@
       <button type="button" class="modal-close" aria-label="Fechar">×</button>
       <span class="eyebrow">A COMUNIDADE</span><h2>Ranking geral</h2>
       <p>Os melhores jogadores da FORCA.</p>
+      <div class="ranking-periods" role="group" aria-label="Período do ranking">
+        <button id="ranking-general" type="button" class="active" aria-pressed="true">Geral</button>
+        <button id="ranking-weekly" type="button" aria-pressed="false">Esta semana</button>
+      </div>
       <div id="ranking-list" class="ranking-list"></div>
     </form>
   </dialog>

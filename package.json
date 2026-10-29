@@ -6,9 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
+    "build": "wrangler deploy --dry-run",
     "dev:cloudflare": "wrangler dev",
-    "deploy:cloudflare": "wrangler deploy",
-    "test:cloudflare": "vitest run --config cloudflare/vitest.config.mjs"
+    "migrate:cloudflare:local": "wrangler d1 migrations apply forca-brasileira-ranking --local",
+    "migrate:cloudflare:remote": "wrangler d1 migrations apply forca-brasileira-ranking --remote",
+    "deploy:cloudflare": "npm run migrate:cloudflare:remote && wrangler deploy",
+    "test:cloudflare": "vitest run --config cloudflare/vitest.config.mjs --max-workers=1 --no-isolate"
   },
   "engines": {
     "node": ">=20"

@@ -9,6 +9,7 @@ import {
   randomItem,
   roomStub
 } from "./shared.js";
+import { getRanking } from "./directory.js";
 
 const MAX_MESSAGE_LENGTH = 4096;
 
@@ -87,9 +88,7 @@ export class PlayerSession {
   async dispatch(socket, data) {
     const attachment = socket.deserializeAttachment() || { sessionId: this.sessionId, context: null };
     if (data.type === "ranking") {
-      const directory = await directoryStub(this.env);
-      const response = await postJson(directory, "/_ranking", {});
-      return this.send(socket, await response.json());
+      return this.send(socket, await getRanking(this.env.DB, data.period));
     }
     if (data.type === "public-rooms") {
       const directory = await directoryStub(this.env);
@@ -111,7 +110,8 @@ export class PlayerSession {
     }
 
     if (data.type === "leave-room") return this.forwardRoomAction(socket, attachment, data);
-    if (["guess", "hint", "start-game", "next-round", "update-settings", "pause-game", "resume-game", "end-game"].includes(data.type)) {
+    if (["guess", "hint", "start-game", "next-round", "update-settings", "pause-game", "resume-game", "end-game",
+      "ready-toggle", "chat", "reaction"].includes(data.type)) {
       if (data.type === "guess" && attachment.context?.type === "solo") {
         return this.guessSolo(socket, data, attachment);
       }
@@ -240,6 +240,7 @@ export class PlayerSession {
       points = solved ? 100 + (game.mistakes === 0 ? 20 : 0) + (elapsed <= 30 ? 10 : 0) : 0;
       const directory = await this.directory();
       const record = await postJson(directory, "/_record", {
+        gameId: game.id,
         name: game.name,
         outcome: game.status,
         points,
@@ -300,7 +301,8 @@ export class PlayerSession {
       winnerId: null,
       answer: game.status === "won" || game.status === "lost" ? game.word.word : null,
       startedAt: game.startedAt,
-      timeLimit: 0
+      timeLimit: 0,
+      ignoreAccents: game.ignoreAccents
     };
   }
 

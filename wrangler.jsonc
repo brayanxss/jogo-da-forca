@@ -24,6 +24,14 @@
       }
     ]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "forca-brasileira-ranking",
+      "database_id": "00000000-0000-0000-0000-000000000000", // Troque pelo UUID do D1 criado na sua conta antes de publicar.
+      "migrations_dir": "cloudflare/migrations"
+    }
+  ],
   "migrations": [
     {
       "tag": "v1",

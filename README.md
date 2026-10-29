@@ -1,55 +1,109 @@
 # Forca & Companhia
 
-Jogo da forca em português do Brasil com modo solo e salas multiplayer em tempo real. O servidor é a autoridade da partida: ele escolhe as palavras, valida os palpites, aplica as regras e calcula a pontuação. A palavra secreta só é enviada quando a rodada termina.
+Jogo da forca em português do Brasil, com modo solo e multiplayer. O projeto mantém a aplicação Node.js original e inclui uma implantação Cloudflare baseada em Workers, Durable Objects, WebSockets e D1. As partidas competitivas são validadas no servidor; a palavra secreta não é enviada a um jogador antes de ele concluir sua rodada.
 
 ## Requisitos
 
-- Node.js 20 ou superior
-- npm
+- Node.js 20 ou superior e npm para desenvolvimento/testes locais.
+- Uma conta Cloudflare com Workers e D1 habilitados para publicação.
+- Uma conta GitHub para conectar o repositório ao Cloudflare Workers Builds.
 
-## Instalação e execução
+Não é necessário instalar Node.js no computador para publicar pelo Workers Builds: o build e o deploy são executados na infraestrutura Cloudflare.
+
+## Aplicação original com Node.js
 
 ```powershell
 npm install
 npm start
 ```
 
-Abra `http://localhost:3000`. Para jogar com outras pessoas na mesma rede, compartilhe o endereço local do servidor; para acesso pela internet, publique a aplicação atrás de um proxy que encaminhe HTTP e WebSocket (`ws`/`wss`) para a mesma porta.
+Abra `http://localhost:3000`. A variável `PORT` altera a porta (padrão `3000`). Para jogar com outras pessoas pela internet nessa versão, o proxy deve encaminhar HTTP e WebSocket (`ws`/`wss`) para o servidor.
 
-O servidor Node original salva o placar em `data/scores.json`; a versão Cloudflare mantém o ranking no Durable Object `GameDirectory`. Os dados locais existentes não são migrados automaticamente para a Cloudflare. A variável `PORT` altera a porta do servidor Node (padrão `3000`).
+Os arquivos `server.js`, `wordbank.js` e `tests/game.test.js` continuam sendo a implementação original. O placar dessa versão usa `data/scores.json`; ele não é migrado automaticamente para D1.
 
-## Publicar na Cloudflare sem instalar Node.js no computador
+## Multiplayer Cloudflare
 
-A versão Cloudflare mantém os arquivos originais do servidor e acrescenta um Worker, Durable Objects e o binding de arquivos estáticos. O Cloudflare Workers Builds instala as dependências e executa o Wrangler nos servidores da Cloudflare; não é necessário instalar Node.js localmente.
+### O que é implantado
 
-1. Envie o projeto para um repositório GitHub. Isso pode ser feito pelo site do GitHub usando **Add file > Upload files**, sem instalar programas.
-2. No painel Cloudflare, abra **Workers & Pages > Create application > GitHub**, autorize o acesso e selecione o repositório.
-3. Configure a raiz do projeto como `/` e confira que o nome do Worker é `forca-brasileira`, igual ao campo `name` em `wrangler.jsonc`.
-4. Use `npm run deploy:cloudflare` como comando de publicação. Não é necessário um comando de build separado; Wrangler empacota o Worker, os Durable Objects e `public/`.
-5. Se habilitar pré-visualizações de branches, mantenha o comando padrão `npx wrangler preview`. Acompanhe o resultado e a URL `workers.dev` na aba **Deployments**.
+- O Worker entrega os arquivos de `public/`, recebe WebSockets e responde ao health check em `/health`.
+- Cada sala tem um Durable Object `GameRoom` independente. `PlayerSession` mantém as conexões WebSocket individuais; `GameDirectory` mantém o índice de salas e grava os resultados no D1.
+- Todos participam simultaneamente da rodada, cada um com seus próprios palpites e erros. A palavra é escolhida e mantida no Durable Object da sala.
+- São aceitos de 2 a 8 participantes. O padrão é cinco rodadas, 60 segundos por rodada, seis erros, 100 pontos por palavra, 30 de bônus sem erros, 20 por rapidez e 25 a cada terceira vitória consecutiva. O anfitrião pode ajustar as opções disponíveis.
+- A classificação resolve empates por pontuação, menos erros, menor tempo acumulado e mais palavras descobertas. O ranking geral e semanal usa D1; resultados são identificados por partida e apelido para evitar contabilização duplicada.
+- O estado da sala é persistido no Durable Object. Alarmes controlam os prazos das rodadas, a expiração de salas reservadas e o período de reconexão de 60 segundos. O chat e as reações têm limites de frequência.
 
-O arquivo `wrangler.jsonc` configura os assets e as migrações SQLite dos Durable Objects. A primeira publicação cria as classes `PlayerSession`, `GameRoom` e `GameDirectory`. O cliente continua usando o WebSocket da mesma origem, e o estado de salas e ranking fica no servidor Cloudflare. O modo Node e os seus testes continuam disponíveis separadamente.
+O formato competitivo Cloudflare é simultâneo (“todos contra a palavra”). A versão Node original permanece separada e não é substituída.
 
-## Como jogar
+### Criar o D1
 
-- **Solo:** escolha apelido, categoria e dificuldade; descubra a palavra com até seis erros.
-- **Multiplayer:** crie uma sala privada (o código pode ser copiado) ou pública, compartilhe o código ou entre por uma sala aberta. São aceitos de 2 a 8 participantes.
-- **Formatos:** em “todos contra a palavra”, qualquer jogador pode palpitar e quem completar a palavra primeiro recebe os pontos; em “competição por turnos”, somente o jogador da vez pode palpitar.
-- O anfitrião configura categoria, dificuldade, formato, limite de jogadores, rodadas, cronômetro, dicas e pontuação. Também pode pausar, retomar ou encerrar a partida.
-- Acentos são ignorados por padrão. Palavras usadas não se repetem na mesma partida até que o conjunto elegível seja esgotado.
-- Uma conexão multiplayer interrompida pode ser retomada pelo mesmo navegador durante 60 segundos. Depois desse período, o participante inativo é removido.
-- O ranking agrega partidas finalizadas por apelido; ele fica no arquivo local com Node ou no Durable Object `GameDirectory` na Cloudflare.
+O manifesto `wrangler.jsonc` precisa do UUID do banco criado na sua conta. Crie um D1 no painel Cloudflare, em **Storage & databases > D1 > Create database**, usando o nome `forca-brasileira-ranking`. Copie o UUID exibido e substitua o valor de exemplo `00000000-0000-0000-0000-000000000000` em `wrangler.jsonc`, no campo `database_id`.
+
+Esse UUID identifica o banco, mas não é uma senha ou token. Não coloque tokens de API, senhas ou credenciais no repositório.
+
+### Publicar conectando o GitHub
+
+1. Envie o projeto ao GitHub, incluindo `cloudflare/`, `public/`, `wordbank.js`, `wrangler.jsonc`, `package.json` e os testes. O `.gitignore` exclui dependências, arquivos de ambiente e dados locais, sem ignorar os arquivos de publicação.
+2. No painel Cloudflare, abra **Workers & Pages > Create application > GitHub** e selecione o repositório. O nome do Worker precisa ser `forca-brasileira`, como no `wrangler.jsonc`.
+3. Configure a raiz como `/`, o comando de build como `npm run build` e o comando de deploy como `npm run deploy:cloudflare`.
+4. Confirme que o binding D1 `DB` e os bindings Durable Objects do `wrangler.jsonc` estão incluídos na publicação. O Wrangler usa o manifesto como configuração.
+5. Acompanhe o deploy e abra a URL `workers.dev` apresentada pelo painel. A rota `/health` deve informar `ok: true` e `words: 1000`.
+
+O comando de deploy aplica primeiro as migrations remotas de `cloudflare/migrations/` e, se isso terminar sem erro, publica o Worker. A primeira implantação também cria as classes Durable Objects declaradas em `wrangler.jsonc`.
+O Workers Builds gerencia a autenticação de deploy pela Cloudflare; não salve tokens ou credenciais no repositório nem em arquivos versionados.
+
+### Atualizar Production
+
+Envie as alterações para a branch de produção conectada ao Workers Builds. O pipeline executa o build, aplica migrations D1 pendentes e publica o Worker. Confira o resultado do deploy antes de usar **Rollback** ou promover outra versão. Se você alterar o UUID do D1, confirme cuidadosamente que está apontando para o banco correto: migrations não transferem automaticamente os dados de um banco antigo.
+
+É possível também executar os comandos em um ambiente com Node.js e acesso à conta Cloudflare:
+
+```powershell
+npm install
+npm run deploy:cloudflare
+```
+
+Para desenvolver com o D1 local:
+
+```powershell
+npm run migrate:cloudflare:local
+npm run dev:cloudflare
+```
+
+## Regras do jogo
+
+- **Solo:** mantém o fluxo solo disponível no cliente e valida palpites e pontuação no servidor.
+- **Multiplayer:** salas públicas ou privadas, código de convite, lista de salas públicas, anfitrião, prontidão, configurações de sala e até oito jogadores.
+- Cada jogador tem seu próprio progresso, tentativas e resultado. O primeiro a acertar é identificado; as letras de outro jogador não alteram seu teclado nem sua rodada.
+- A partida começa com no mínimo dois jogadores prontos. Novas entradas durante a partida são controladas pela configuração da sala.
+- Acentos são ignorados por padrão, com opção de considerá-los separadamente. Palavras não se repetem na mesma partida até que o conjunto elegível se esgote.
+- Dicas, categoria, dificuldade, duração e número de rodadas são controlados pelas opções da sala.
+- Uma desconexão multiplayer pode ser retomada pela mesma sessão/navegador por até 60 segundos. Depois do prazo, o jogador inativo é removido da lista da sala.
+- Chat, reações e avisos de entrada, saída, vitórias e campeão são enviados em tempo real.
+
+O arquivo `wordbank.js` mantém as 1.000 palavras únicas e as dez categorias utilizadas por ambas as versões.
 
 ## Testes
+
+Testes da aplicação Node:
 
 ```powershell
 npm test
 ```
 
-Os testes verificam o total, unicidade e categorias das 1.000 palavras, a normalização de acentos, o limite de erros, a ausência de repetição e o fluxo multiplayer completo entre dois clientes (incluindo segredo, palpites duplicados, sincronização, pontuação e rodada seguinte).
+Testes no runtime Cloudflare Workers, com Vitest e o plugin oficial:
 
-Para validar as classes Cloudflare no runtime Workers, execute `npm run test:cloudflare`. Esse conjunto verifica o bundle do banco, health check, segredo da palavra, ações em sala, pontuação e rodada seguinte; requer Node/npm para execução local, mas o código também pode ser validado em CI ou em ambiente remoto.
+```powershell
+npm run test:cloudflare
+```
 
-## Banco de palavras
+Os testes Cloudflare cobrem o banco de palavras, salas independentes, oito jogadores, sincronização WebSocket com progresso individual, pontuação e desempates, reconexão/expiração, alarmes, segredo da palavra e persistência/idempotência do ranking D1. O runner usa um worker e armazenamento compartilhado para permitir testes com WebSockets. O workflow do GitHub executa ambos os conjuntos em pushes e pull requests.
 
-O arquivo `wordbank.js` contém dez categorias com cem entradas únicas por categoria. O servidor valida o total e a unicidade ao iniciar; uma lista inválida impede a inicialização em vez de reduzir silenciosamente o banco.
+## Arquivos principais
+
+- `cloudflare/worker.js`: roteamento do Worker e bindings.
+- `cloudflare/room.js`: estado, regras e pontuação autoritativos de cada sala.
+- `cloudflare/session.js`: WebSocket, sessões e modo solo.
+- `cloudflare/directory.js`: diretório de salas e integração de resultados/ranking D1.
+- `cloudflare/migrations/0001_ranking.sql`: schema do ranking e histórico por partida.
+- `cloudflare/tests/`: testes no ambiente Cloudflare.
+- `wrangler.jsonc`: configuração de publicação, Durable Objects, assets e D1.

@@ -12,6 +12,7 @@
     lobbyList: $("#lobby-player-list"), lobbyCount: $("#lobby-player-count"),
     startGame: $("#start-game-button"), keyboard: $("#keyboard"), maskedWord: $("#masked-word"),
     feedback: $("#feedback-banner"), scoreList: $("#score-list"), rankingList: $("#ranking-list"),
+    readyGame: $("#ready-game-button"), chatLog: $("#chat-log"), chatInput: $("#chat-input"),
     gameTitle: $("#game-title"), gameMode: $("#game-mode-label"), roomCodeBox: $("#room-code-box"),
     category: $("#round-category"), counter: $("#round-counter"), timer: $("#round-timer"),
     tries: $("#tries-label"), hangman: $("#hangman"), hint: $("#hint-button"),
@@ -86,6 +87,7 @@
       }
       send("ranking");
     });
+
     socket.addEventListener("message", (event) => {
       let message;
       try {
@@ -144,6 +146,13 @@
         showToast(`A palavra era “${roomState.round?.answer}”.`, true);
       }
       renderRoom();
+      return;
+    }
+    if (message.type === "chat-message") {
+      if (roomState) {
+        roomState.chat = [...(roomState.chat || []), message.entry].slice(-50);
+        renderChat(roomState.chat);
+      }
       return;
     }
     if (message.type === "solo-state") {
@@ -234,13 +243,14 @@
       timeLimit: Number($("#setting-time").value),
       pointsPerWord: Number($("#setting-points").value),
       perfectBonus: Number($("#setting-perfect").value),
+      streakBonus: Number($("#setting-streak").value),
       speedBonus: Number($("#setting-speed-points").value),
       speedEnabled: $("#setting-speed").checked,
       speedThreshold: Number($("#setting-speed-threshold").value),
-      errorPenalty: Number($("#setting-penalty").value),
       isPublic: $("#setting-public").checked,
       hints: $("#setting-hints").checked,
-      ignoreAccents: $("#setting-accents").checked
+      ignoreAccents: $("#setting-accents").checked,
+      allowLateJoin: $("#setting-late-join").checked
     };
   }
 
@@ -264,7 +274,7 @@
     if (!roomState) return;
     $("#room-code-label").textContent = roomState.code;
     els.roomCodeBox.hidden = false;
-    $("#score-rule").innerHTML = `${roomState.settings.pointsPerWord} pontos por palavra descoberta<br><small>Bônus de ${roomState.settings.perfectBonus} pontos sem erros</small>`;
+    $("#score-rule").innerHTML = `${roomState.settings.pointsPerWord} pontos por palavra · ${roomState.settings.perfectBonus} sem erros<br><small>${roomState.settings.speedBonus} por velocidade · ${roomState.settings.streakBonus} a cada 3 vitórias</small>`;
     const isHost = roomState.players.some((player) => player.id === currentPlayerId && player.host);
     if (roomState.status === "lobby") {
       els.lobby.hidden = false;
@@ -280,15 +290,19 @@
       els.playArea.hidden = true;
       els.finished.hidden = false;
       els.gameTitle.textContent = "Partida concluída";
-      const winner = [...roomState.players].sort((a, b) => b.points - a.points || b.wordsFound - a.wordsFound || a.errors - b.errors)[0];
+      const winner = roomState.players.find((player) => player.id === roomState.championId) ||
+        [...roomState.players].sort((a, b) => b.points - a.points || a.errors - b.errors || a.timeSpentMs - b.timeSpentMs || b.wordsFound - a.wordsFound)[0];
       els.finishedCopy.textContent = winner ? `${winner.name} terminou na frente, com ${winner.points} pontos. Valeu por jogar!` : "A partida chegou ao fim.";
+      renderFinalStandings(roomState.players);
+      renderChat(roomState.chat);
       return;
     }
     els.finished.hidden = true;
     els.playArea.hidden = false;
     els.gameTitle.textContent = roomState.status === "paused" ? "Partida pausada" : "Hora de adivinhar";
-    els.gameMode.textContent = roomState.format === "turns" ? "COMPETIÇÃO POR TURNOS" : "TODOS CONTRA A PALAVRA";
+    els.gameMode.textContent = "COMPETIÇÃO EM TEMPO REAL";
     $("#end-game-button").hidden = !isHost;
+    renderChat(roomState.chat);
     renderRound(roomState.round, roomState);
   }
 
@@ -317,10 +331,14 @@
         status.textContent = "Reconectando…";
         row.append(status);
       }
+      const ready = document.createElement("span");
+      ready.className = `ready-tag${player.ready ? " is-ready" : ""}`;
+      ready.textContent = player.ready ? "PRONTO" : "AGUARDANDO";
+      row.append(ready);
       return row;
     }));
-    const controls = ["category", "difficulty", "format", "players", "rounds", "time", "points", "perfect", "speed-points", "speed-threshold", "penalty", "public", "hints", "speed", "accents"];
-    const values = [settings.category, settings.difficulty, settings.format, String(settings.maxPlayers), String(settings.rounds), String(settings.timeLimit), String(settings.pointsPerWord), String(settings.perfectBonus), String(settings.speedBonus), String(settings.speedThreshold), String(settings.errorPenalty)];
+    const controls = ["category", "difficulty", "format", "players", "rounds", "time", "points", "perfect", "streak", "speed-points", "speed-threshold", "public", "hints", "speed", "accents", "late-join"];
+    const values = [settings.category, settings.difficulty, settings.format, String(settings.maxPlayers), String(settings.rounds), String(settings.timeLimit), String(settings.pointsPerWord), String(settings.perfectBonus), String(settings.streakBonus), String(settings.speedBonus), String(settings.speedThreshold)];
     controls.slice(0, 11).forEach((key, index) => {
       const control = $(`#setting-${key}`);
       if (document.activeElement !== control) control.value = values[index];
@@ -329,12 +347,22 @@
     $("#setting-hints").checked = settings.hints;
     $("#setting-speed").checked = settings.speedEnabled;
     $("#setting-accents").checked = settings.ignoreAccents;
-    ["category", "difficulty", "format", "players", "rounds", "time", "points", "perfect", "speed-points", "speed-threshold", "penalty", "public", "hints", "speed", "accents"].forEach((key) => {
+    $("#setting-late-join").checked = settings.allowLateJoin;
+    controls.forEach((key) => {
       $(`#setting-${key}`).disabled = !isHost;
     });
-    els.startGame.disabled = !isHost || roomState.players.length < 2;
-    els.startGame.innerHTML = roomState.players.length < 2 ? "Aguardando mais jogadores…" : "Iniciar partida <span>↗</span>";
-    $("#lobby-help").textContent = isHost ? "Suas opções são aplicadas a todas as rodadas." : "O anfitrião escolherá as opções e iniciará o jogo.";
+    const player = roomState.players.find((entry) => entry.id === currentPlayerId);
+    els.readyGame.hidden = false;
+    els.readyGame.textContent = player?.ready ? "Cancelar pronto" : "Marcar como pronto";
+    els.readyGame.disabled = !player;
+    const everybodyReady = roomState.players.length >= 2 && roomState.players.every((entry) => entry.ready);
+    els.startGame.disabled = !isHost || !everybodyReady;
+    els.startGame.innerHTML = roomState.players.length < 2
+      ? "Aguardando mais jogadores…"
+      : everybodyReady ? "Iniciar partida <span>↗</span>" : "Aguardando todos ficarem prontos…";
+    $("#lobby-help").textContent = isHost
+      ? "Todos precisam ficar prontos. Suas opções são aplicadas a cada rodada."
+      : "Marque-se como pronto quando estiver preparado para jogar.";
   }
 
   function currentRound() {
@@ -358,13 +386,18 @@
         ? "Descubra a palavra antes que as tentativas acabem."
         : round.status === "won" ? "Mandou muito bem! Palavra descoberta." : "Fim de jogo. Vamos para a próxima?";
     }
+    const waitingForOthers = currentMode === "room" && !round.roundComplete &&
+      round.status !== "playing";
     els.feedback.hidden = round.status === "playing";
     els.feedback.classList.toggle("lost", round.status === "lost");
     if (round.status === "won") {
-      const winner = state?.players?.find((player) => player.id === round.winnerId);
-      els.feedback.textContent = currentMode === "solo" ? `Você acertou: ${round.answer}! 🎉` : `${winner?.name || "Alguém"} descobriu: ${round.answer}! 🎉`;
+      els.feedback.textContent = currentMode === "solo"
+        ? `Você acertou: ${round.answer}!`
+        : `Você descobriu a palavra: ${round.answer}!`;
     } else if (round.status === "lost") {
-      els.feedback.textContent = round.endReason === "timeout"
+      els.feedback.textContent = waitingForOthers
+        ? "Suas tentativas terminaram. Aguarde os outros jogadores."
+        : round.endReason === "timeout"
         ? `O tempo acabou. A palavra era ${round.answer}.`
         : round.endReason === "ended"
           ? `A partida foi encerrada. A palavra era ${round.answer}.`
@@ -373,28 +406,23 @@
       els.feedback.textContent = "";
     }
     const isHost = currentMode === "room" && state.players.some((player) => player.id === currentPlayerId && player.host);
-    const canNext = round.status !== "playing" && currentMode === "room" && isHost && round.roundNumber < state.roundsTotal;
+    const canNext = round.roundComplete && currentMode === "room" && isHost && round.roundNumber < state.roundsTotal;
     els.next.hidden = !canNext;
     els.playAgain.hidden = !(round.status !== "playing" && currentMode === "solo");
-    els.pause.hidden = !isHost || (round.status !== "playing" && state?.status !== "paused");
+    els.pause.hidden = !isHost || !["playing", "paused"].includes(state?.status);
     els.pause.textContent = state?.status === "paused" ? "Retomar" : "Pausar";
     els.hint.hidden = round.status !== "playing" || (currentMode === "room" && !state.settings.hints);
     els.hint.disabled = Boolean(round.hint) || round.status !== "playing" || state?.status === "paused";
-    const currentTurn = state?.turnPlayerId;
-    const turnIsMine = currentMode !== "room" || state.format !== "turns" || currentTurn === currentPlayerId;
+    const turnIsMine = true;
     els.keyboard.querySelectorAll("button").forEach((key) => {
       if (round.status !== "playing" || !turnIsMine || state?.status === "paused") key.disabled = true;
     });
-    $("#word-caption").classList.toggle("turn-caption", !turnIsMine);
+    $("#word-caption").classList.remove("turn-caption");
     $(".accent-note").textContent = round.ignoreAccents ? "Acentos são ignorados" : "Acentos são diferenciados";
-    if (!turnIsMine && round.status === "playing") $("#word-caption").textContent = `Vez de ${state.players.find((player) => player.id === currentTurn)?.name || "outro jogador"}.`;
-    if (currentMode === "room") renderScoreboard(state, currentIdFromWinner(round));
+    if (waitingForOthers) $("#word-caption").textContent = "Sua rodada terminou. O placar será atualizado quando todos concluírem.";
+    if (currentMode === "room") renderScoreboard(state);
     else renderSoloScore();
     updateTimer(round);
-  }
-
-  function currentIdFromWinner(round) {
-    return round.winnerId || "";
   }
 
   function renderMaskedWord(round) {
@@ -453,12 +481,13 @@
   }
 
   function renderScoreboard(state) {
-    const players = [...state.players].sort((a, b) => b.points - a.points || b.wordsFound - a.wordsFound || a.errors - b.errors);
-    const activePlayerId = state.format === "turns" ? state.turnPlayerId : null;
+    const players = [...state.players].sort((a, b) =>
+      b.points - a.points || a.errors - b.errors || a.timeSpentMs - b.timeSpentMs || b.wordsFound - a.wordsFound
+    );
     $("#online-count").innerHTML = `<i></i> ${state.players.filter((player) => player.connected).length} online`;
     els.scoreList.replaceChildren(...players.map((player, index) => {
       const row = document.createElement("div");
-      row.className = `score-player${player.id === currentPlayerId ? " current" : ""}${player.id === activePlayerId ? " current-turn" : ""}`;
+      row.className = `score-player${player.id === currentPlayerId ? " current" : ""}${index === 0 ? " top-ranked" : ""}`;
       const avatar = document.createElement("span");
       avatar.className = "player-avatar";
       avatar.style.background = initialsColor(index);
@@ -468,16 +497,49 @@
       const name = document.createElement("b");
       name.textContent = player.name;
       const subtitle = document.createElement("small");
-      subtitle.textContent = player.id === activePlayerId
-        ? player.id === currentPlayerId ? "Sua vez" : "Vez de jogar"
-        : player.host ? "Anfitrião" : `${player.wordsFound} ${player.wordsFound === 1 ? "palavra" : "palavras"}`;
+      const connection = player.connected ? "Online" : "Reconectando";
+      subtitle.textContent = `${connection} · ${player.wordsFound} vitórias · ${player.errors} erros`;
       details.append(name, subtitle);
       const points = document.createElement("span");
       points.className = "score-points";
-      points.textContent = `${player.points} pts`;
+      points.textContent = `#${index + 1} · ${player.points} pts`;
       row.append(avatar, details, points);
       return row;
     }));
+  }
+
+  function renderFinalStandings(players = []) {
+    const container = $("#finished-standings");
+    const ordered = [...players].sort((a, b) =>
+      b.points - a.points || a.errors - b.errors || a.timeSpentMs - b.timeSpentMs || b.wordsFound - a.wordsFound
+    );
+    container.replaceChildren(...ordered.map((player, index) => {
+      const row = document.createElement("div");
+      row.className = `finished-standing${index === 0 ? " champion" : ""}`;
+      const place = document.createElement("span");
+      place.textContent = `#${index + 1}`;
+      const name = document.createElement("b");
+      name.textContent = player.name;
+      const result = document.createElement("span");
+      result.textContent = `${player.points} pts · ${player.wordsFound} palavras · ${player.errors} erros`;
+      row.append(place, name, result);
+      return row;
+    }));
+  }
+
+  function renderChat(entries = []) {
+    if (!els.chatLog) return;
+    els.chatLog.replaceChildren(...entries.slice(-30).map((entry) => {
+      const line = document.createElement("div");
+      line.className = `chat-entry chat-${entry.kind || "chat"}`;
+      const name = document.createElement("b");
+      name.textContent = entry.name || "Jogador";
+      const message = document.createElement("span");
+      message.textContent = entry.message || "";
+      line.append(name, message);
+      return line;
+    }));
+    els.chatLog.scrollTop = els.chatLog.scrollHeight;
   }
 
   function renderSoloScore() {
@@ -518,7 +580,9 @@
       els.timer.classList.toggle("urgent", remaining <= 10);
     };
     update();
-    if (round.status === "playing") clockTimer = setInterval(update, 1000);
+    if (round.status === "playing" || (currentMode === "room" && !round.roundComplete)) {
+      clockTimer = setInterval(update, 1000);
+    }
   }
 
   function renderSolo() {
@@ -556,7 +620,7 @@
       const label = document.createElement("b");
       label.textContent = player.name;
       const stats = document.createElement("small");
-      const accuracy = player.games ? Math.round((player.wins / player.games) * 100) : 0;
+      const accuracy = player.accuracy ?? (player.games ? Math.round((player.wins / player.games) * 100) : 0);
       stats.textContent = `${player.wordsFound} palavras · ${accuracy}% acertos · ${player.averageTime === null ? "—" : `${player.averageTime}s`} média · sequência ${player.bestStreak}`;
       name.append(label, stats);
       const points = document.createElement("span");
@@ -589,7 +653,7 @@
       const title = document.createElement("b");
       title.textContent = `Sala ${room.code}`;
       const info = document.createElement("small");
-      info.textContent = `${room.players}/${room.maxPlayers} jogadores · ${room.category} · ${room.format === "turns" ? "por turnos" : "em equipe"}`;
+      info.textContent = `${room.players}/${room.maxPlayers} jogadores · ${room.category} · competitivo`;
       details.append(title, info);
       const enter = document.createElement("span");
       enter.className = "ranking-score";
@@ -614,6 +678,8 @@
   $("#join-room-button").addEventListener("click", () => openSetup("join"));
   $("#public-rooms-button").addEventListener("click", () => {
     dialogAction = "public";
+    $("#ranking-general").hidden = true;
+    $("#ranking-weekly").hidden = true;
     $("#ranking-list").replaceChildren();
     els.rankingDialog.querySelector(".eyebrow").textContent = "PARTIDAS ABERTAS";
     els.rankingDialog.querySelector("h2").textContent = "Salas públicas";
@@ -626,8 +692,14 @@
     els.rankingDialog.querySelector(".eyebrow").textContent = "A COMUNIDADE";
     els.rankingDialog.querySelector("h2").textContent = "Ranking geral";
     els.rankingDialog.querySelector("p").textContent = "Os melhores jogadores da Forca & Companhia.";
+    $("#ranking-general").hidden = false;
+    $("#ranking-weekly").hidden = false;
+    $("#ranking-general").classList.add("active");
+    $("#ranking-weekly").classList.remove("active");
+    $("#ranking-general").setAttribute("aria-pressed", "true");
+    $("#ranking-weekly").setAttribute("aria-pressed", "false");
     els.rankingDialog.showModal();
-    send("ranking");
+    send("ranking", { period: "general" });
   });
   $("#profile-button").addEventListener("click", () => {
     if (currentMode) return showToast("Seu apelido é definido ao iniciar uma partida.");
@@ -662,6 +734,10 @@
     }
   });
   els.startGame.addEventListener("click", () => send("start-game"));
+  els.readyGame.addEventListener("click", () => {
+    const player = roomState?.players.find((entry) => entry.id === currentPlayerId);
+    if (player) send("ready-toggle", { ready: !player.ready });
+  });
   els.next.addEventListener("click", () => send("next-round"));
   els.pause.addEventListener("click", () => send(roomState?.status === "paused" ? "resume-game" : "pause-game"));
   els.hint.addEventListener("click", () => send("hint"));
@@ -671,6 +747,15 @@
   });
   els.endGame.addEventListener("click", () => {
     if (confirm("Encerrar a partida para todos os jogadores?")) send("end-game");
+  });
+  $("#chat-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const message = els.chatInput.value.trim();
+    if (!message) return;
+    if (send("chat", { message })) els.chatInput.value = "";
+  });
+  document.querySelectorAll("[data-reaction]").forEach((button) => {
+    button.addEventListener("click", () => send("reaction", { reaction: button.dataset.reaction }));
   });
 
   $("#setup-dialog").addEventListener("close", () => {
@@ -692,8 +777,22 @@
     }
   });
 
-  ["category", "difficulty", "format", "players", "rounds", "time", "points", "perfect", "speed-points", "speed-threshold", "penalty", "public", "hints", "speed", "accents"].forEach((key) => {
+  ["category", "difficulty", "format", "players", "rounds", "time", "points", "perfect", "streak", "speed-points", "speed-threshold", "public", "hints", "speed", "accents", "late-join"].forEach((key) => {
     $(`#setting-${key}`).addEventListener("change", () => send("update-settings", { settings: readLobbySettings() }));
+  });
+  $("#ranking-general").addEventListener("click", () => {
+    $("#ranking-general").classList.add("active");
+    $("#ranking-weekly").classList.remove("active");
+    $("#ranking-general").setAttribute("aria-pressed", "true");
+    $("#ranking-weekly").setAttribute("aria-pressed", "false");
+    send("ranking", { period: "general" });
+  });
+  $("#ranking-weekly").addEventListener("click", () => {
+    $("#ranking-weekly").classList.add("active");
+    $("#ranking-general").classList.remove("active");
+    $("#ranking-weekly").setAttribute("aria-pressed", "true");
+    $("#ranking-general").setAttribute("aria-pressed", "false");
+    send("ranking", { period: "weekly" });
   });
 
   els.roomCode.addEventListener("input", () => {
